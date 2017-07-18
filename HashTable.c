@@ -56,5 +56,46 @@ void HT_freeTable(HashTable *table)
 		{
 			free(table->pairs[i].key);
 		}
+		if (table->pairs[i].value)
+		{
+			free(table->pairs[i].value);
+		}
 	}
+	/* Free the list of HashSpaces. */
+	free(table->pairs);
+	/* Free the table itself. */
+	free(table);
+}
+
+/**
+@fn HT_hashValue
+@brief Calculates the hash value of a key using the Jenkins one-at-a-time
+algorithm.
+@param key The key whose hash value will be calculated. Must be null-terminated.
+@return The hash value of the given key as an unsigned int.
+*/
+unsigned int HT_hashValue(char *key)
+{
+	/* @TODO: Implement */
+}
+
+/**
+@fn HT_add
+@brief Adds a key/value pair to a HashTable.
+@param table Pointer to the HashTable struct which the key/value pair will be
+added to.
+@param key The string representing the key to be added. Must be null-terminated.
+@param value Pointer to a block of data representing the value to be added.
+For instance, if the value is a Matrix struct, then this parameter would simply
+be the pointer to that struct.
+@param valueType The type of data of the value. If the value is a Matrix struct,
+then valueType will be VT_MATRIX.
+@return An error code. 0 if no problems were encountered.
+*/
+int HT_add(HashTable *table, char *key, void *value, value_t valueType)
+{
+	/* Get the index in the hash table that this key would normally be added at. */
+	unsigned int index = HT_hashValue(key) % table->maxNumItems;
+	/* This index may point to an already-filled HashSpace. If so, check for the
+	key already being present along the chain of linked spaces. */
 }
