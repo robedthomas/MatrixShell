@@ -94,8 +94,100 @@ then valueType will be VT_MATRIX.
 */
 int HT_add(HashTable *table, char *key, void *value, value_t valueType)
 {
+	/* First, make sure the table isn't already full. */
+	if (table->numItems >= table->maxNumItems)
+	{
+		return FAIL-TABLE_FULL;
+	}
 	/* Get the index in the hash table that this key would normally be added at. */
 	unsigned int index = HT_hashValue(key) % table->maxNumItems;
-	/* This index may point to an already-filled HashSpace. If so, check for the
-	key already being present along the chain of linked spaces. */
+	/* If the HashSpace is empty, simply add the key/value pair in. */
+	if (!table->pairs[index].key)
+	{
+		/* Allocate and add the key and value. */
+		table->pairs[index].key = HT_copyString(key);
+		table->pairs[index].value = HT_copyValue(value, valueType);
+		table->pairs[index].valueType = valueType;
+		/* Set the linked index to -1 to indicate that there is no chain. */
+		table->pairs[index].linkedIndex = -1;
+		return 0;
+	}
+	/* If the HashSpace is filled, it may point to another space. If so, travel 
+	to the end of the linked chain so that the link of the HashSpace at the end 
+	can be set. */
+	while (table->pairs[index].linkedIndex >= 0)
+	{
+		/* While travelling along the chain, check for the key already being
+		present. If it is, overwrite the present value with the new value. */
+		if (!strcmp(key, table->pairs[index].key))
+		{
+			if (table->pairs[index].value)
+			{
+				/* Free the old value. */
+				free(table->pairs[index].value);
+			}
+			/* Allocate for the new value and copy it in. */
+			unsigned int size = HT_typeSize(valueType);
+			table->pairs[index].value = HT_copyValue(value, size);
+			table->pairs[index].valueType = valueType;
+			table->numItems++;
+			return 0;
+		}
+		/* Move to the next space in the chain. */
+		index = table->pairs[index].linkedIndex;
+	}
+	/* Once at the last HashSpace in the chain, make sure that the next link to
+	be made is within the bounds of the table. */
+	if (table->nextLink < table->maxNumItems)
+	{
+		/* Link the space at the end of the chain to the next link space, where
+		this key/value pair will be added. */
+		table->pairs[index].linkedIndex = table->nextLink;
+		/* Add the key/value pair. */
+		table->pairs[table->nextLink].key = HT_copyString(key);
+		unsigned int size = HT_typeSize(valueType);
+		table->pairs[table->nextLink].value = HT_copyValue(value, size);
+		table->pairs[table->nextLink].valueType = valueType;
+		table->pairs[table->nextLink].linkedIndex = -1;
+		table->numItems++;
+		/* Advance the next link to point at the closest empty space below where
+		it originally pointed. */
+		while (table->pairs[++(table->nextLink)].key) {}
+	}
+	/* If the next link was outside of the bounds of the table, return with an 
+	error code. */
+	else
+	{
+		return ERR-NEXT_LINK_OUT_OF_BOUNDS;
+	}
+	return 0;
+}
+
+/**
+@fn HT_copyString
+@brief Creates a dynamically allocated copy of the given string.
+@param str The string to be copied.
+@return A dynamically allocated string containing the string given.
+*/
+char *HT_copyString(char *str)
+{
+	unsigned int len = strlen(str);
+	newStr = (char *)malloc(sizeof(char) * (len + 1));
+	strcpy(newStr, str);
+	return newStr;
+}
+
+/**
+@fn HT_copyValue
+@brief Creates a dynamically allocated copy of the given data block.
+@param value The data block to be copied.
+@param size The size (in bytes) of the data block to be copied.
+@return A pointer to a dynamically allocated block of data containing the data
+given in value.
+*/
+void *HT_copyValue(void *value, size_t size)
+{
+	void *newValue = malloc(size);
+	memcpy(newValue, value, size);
+	return newValue;
 }
