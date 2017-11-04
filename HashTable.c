@@ -76,7 +76,33 @@ algorithm.
 */
 unsigned int HT_hashValue(char *key)
 {
-	/* @TODO: Implement */
+	int len = strlen(key);
+	return jenkins_one_at_a_time_hash_value(key, len);
+}
+
+/**
+@fn jenkins_one_at_a_time_hash_value
+@brief Uses the Jenkins one-at-a-time hashing algorithm to convert a key any
+positive length into the corresponding hash value.
+@param key The key whose hash value will be calculated.
+@param len The length of the key (in bytes).
+@return The hash value of the given key as an unsigned int.
+*/
+unsigned int jenkins_one_at_a_time_hash_value(char *key, int len)
+{
+	int i = 0;
+	unsigned int hashValue = 0;
+	for (int i = 0; i < len; i++)
+	{
+		hashValue += key[i];
+		hashValue += (hashValue << 10);
+		hashValue ^= (hashValue >> 6);
+	}
+
+	hashValue += (hashValue << 3);
+	hashValue ^= (hashValue >> 11);
+	hashValue += (hashValue << 15);
+	return hashValue;
 }
 
 /**
@@ -97,7 +123,7 @@ int HT_add(HashTable *table, char *key, void *value, value_t valueType)
 	/* First, make sure the table isn't already full. */
 	if (table->numItems >= table->maxNumItems)
 	{
-		return FAIL-TABLE_FULL;
+		return FAIL_TABLE_FULL;
 	}
 	/* Get the index in the hash table that this key would normally be added at. */
 	unsigned int index = HT_hashValue(key) % table->maxNumItems;
@@ -108,14 +134,30 @@ int HT_add(HashTable *table, char *key, void *value, value_t valueType)
 		table->pairs[index].key = HT_copyString(key);
 		table->pairs[index].value = HT_copyValue(value, valueType);
 		table->pairs[index].valueType = valueType;
-		/* Set the linked index to -1 to indicate that there is no chain. */
-		table->pairs[index].linkedIndex = -1;
+		/* Indicate that there is no chain from this space. */
+		table->pairs[index].linkedIndex = 0;
+		table->pairs[index].hasLink = false;
+		/* If this pair was added where the next link of a chain would be added,
+		   advance the next link pointer to the next free space. */
+		if (index == table->nextLink)
+		{
+			while (table->pairs[table->nextLink].key)
+			{
+				table->nextLink++;
+				/* Catch no space being available for a new link. */
+				if (table->nextLink >= table->maxNumItems)
+				{
+					return ERR_NEXT_LINK_OUT_OF_BOUNDS;
+				}
+			}
+		}
 		return 0;
 	}
 	/* If the HashSpace is filled, it may point to another space. If so, travel 
 	to the end of the linked chain so that the link of the HashSpace at the end 
 	can be set. */
-	while (table->pairs[index].linkedIndex >= 0)
+	bool linkAvailable;
+	do
 	{
 		/* While travelling along the chain, check for the key already being
 		present. If it is, overwrite the present value with the new value. */
@@ -125,6 +167,9 @@ int HT_add(HashTable *table, char *key, void *value, value_t valueType)
 			{
 				/* Free the old value. */
 				free(table->pairs[index].value);
+				/* Decrement the number of items in the table to compensate for
+				   it being incremented when the new value is added. */
+				table->numItems--;
 			}
 			/* Allocate for the new value and copy it in. */
 			unsigned int size = HT_typeSize(valueType);
@@ -133,9 +178,17 @@ int HT_add(HashTable *table, char *key, void *value, value_t valueType)
 			table->numItems++;
 			return 0;
 		}
-		/* Move to the next space in the chain. */
-		index = table->pairs[index].linkedIndex;
-	}
+		if (table->pairs[index].hasLink)
+		{
+			linkAvailable = true;
+			/* Move to the next space in the chain. */
+			index = table->pairs[index].linkedIndex;
+		}
+		else 
+		{
+			linkAvailable = false;
+		}
+	} while (linkAvailable);
 	/* Once at the last HashSpace in the chain, make sure that the next link to
 	be made is within the bounds of the table. */
 	if (table->nextLink < table->maxNumItems)
@@ -158,7 +211,7 @@ int HT_add(HashTable *table, char *key, void *value, value_t valueType)
 	error code. */
 	else
 	{
-		return ERR-NEXT_LINK_OUT_OF_BOUNDS;
+		return ERR_NEXT_LINK_OUT_OF_BOUNDS;
 	}
 	return 0;
 }

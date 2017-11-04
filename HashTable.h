@@ -8,8 +8,12 @@ style. This hash table is built to represent a list of pseudo-variables being
 declared by the user through the matrix shell.
 */
 
+#ifndef HASHTABLE_H
+#define HASHTABLE_H
+
 /*** INCLUDES: ***/
 #include <stdlib.h>
+#include <stdbool.h>
 
 /*** DEFINES: ***/
 
@@ -42,6 +46,8 @@ value_t above.
 first key/value pair which collided with this one. This is what gives the 
 hash table its coalescing behavior. By following the chain of indexes, one can 
 search through all key/value pairs that have collided.
+@var hasLink A boolean value representing whether or not this HashSpace links to 
+another HashSpace.
 */
 typedef struct 
 {
@@ -49,6 +55,7 @@ typedef struct
 	void *value;
 	value_t valueType;
 	int linkedIndex;
+	bool hasLink;
 } HashSpace;
 
 /**
@@ -72,3 +79,78 @@ typedef struct
 } HashTable;
 
 /*** FUNCTION PROTOTYPES: ***/
+
+/**
+@fn HT_newTable
+@brief Generates a newly allocated HashTable struct and initializes it. All keys
+will be set to NULL to indicate that each bucket in the table is empty.
+@param maxNumItems The maximum number of key/value pairs allowed in the hash table.
+@return A pointer to a newly allocated and initialized HashTable struct.
+*/
+HashTable *HT_newTable(unsigned int maxNumItems);
+
+/**
+@fn HT_freeTable
+@brief Frees an allocated HashTable struct.
+NOTE: assumes that all keys and values in the table were dynamically allocated 
+for and thus frees those too.
+@param table Pointer to a dynamically allocated HashTable struct which will be
+freed.
+*/
+void HT_freeTable(HashTable *table);
+
+/**
+@fn HT_hashValue
+@brief Calculates the hash value of a key using the Jenkins one-at-a-time
+algorithm.
+@param key The key whose hash value will be calculated. Must be null-terminated.
+@return The hash value of the given key as an unsigned int.
+*/
+unsigned int HT_hashValue(char *key);
+
+/**
+@fn jenkins_one_at_a_time_hash_value
+@brief Uses the Jenkins one-at-a-time hashing algorithm to convert a key any
+positive length into the corresponding hash value.
+@param key The key whose hash value will be calculated.
+@param len The length of the key (in bytes).
+@return The hash value of the given key as an unsigned int.
+*/
+unsigned int jenkins_one_at_a_time_hash_value(char *key, int len);
+
+/**
+@fn HT_add
+@brief Adds a key/value pair to a HashTable.
+@param table Pointer to the HashTable struct which the key/value pair will be
+added to.
+@param key The string representing the key to be added. Must be null-terminated.
+@param value Pointer to a block of data representing the value to be added.
+For instance, if the value is a Matrix struct, then this parameter would simply
+be the pointer to that struct.
+@param valueType The type of data of the value. If the value is a Matrix struct,
+then valueType will be VT_MATRIX.
+@return An error code. 0 if no problems were encountered.
+*/
+int HT_add(HashTable *table, char *key, void *value, value_t valueType);
+
+/**
+@fn HT_copyString
+@brief Creates a dynamically allocated copy of the given string.
+@param str The string to be copied.
+@return A dynamically allocated string containing the string given.
+*/
+char *HT_copyString(char *str);
+
+/**
+@fn HT_copyValue
+@brief Creates a dynamically allocated copy of the given data block.
+@param value The data block to be copied.
+@param size The size (in bytes) of the data block to be copied.
+@return A pointer to a dynamically allocated block of data containing the data
+given in value.
+*/
+void *HT_copyValue(void *value, size_t size);
+
+
+
+#endif /* HASHTABLE_H */
