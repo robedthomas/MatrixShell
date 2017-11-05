@@ -10,6 +10,8 @@ matrix shell.
 
 /*** INCLUDES: ***/
 #include "HashTable.h"
+#include "Matrix.h"
+#include "Rational.h"
 
 /*** DEFINES: ***/
 
@@ -243,4 +245,26 @@ void *HT_copyValue(void *value, size_t size)
 	void *newValue = malloc(size);
 	memcpy(newValue, value, size);
 	return newValue;
+}
+
+/**
+@fn HT_typeSize
+@brief Returns the size (in bytes) of the given type that can be represented in
+a value_t variable.
+@param type The type whose size will be returned.
+@return The size in bytes of the given type.
+*/
+unsigned int HT_typeSize(value_t type)
+{
+	switch (type)
+	{
+		case VT_MATRIX:
+			return sizeof(Matrix);
+		case VT_RATIONAL: 
+			return sizeof(Rational);
+		default:
+			return FAIL_INVALID_TYPE;
+	}
+
+	return FAIL_INVALID_TYPE;
 }

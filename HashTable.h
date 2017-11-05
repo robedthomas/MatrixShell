@@ -151,6 +151,15 @@ given in value.
 */
 void *HT_copyValue(void *value, size_t size);
 
+/**
+@fn HT_typeSize
+@brief Returns the size (in bytes) of the given type that can be represented in
+a value_t variable.
+@param type The type whose size will be returned.
+@return The size in bytes of the given type.
+*/
+unsigned int HT_typeSize(value_t type);
+
 
 
 #endif /* HASHTABLE_H */
