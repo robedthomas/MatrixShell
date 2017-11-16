@@ -15,15 +15,85 @@ the integers q and p.
 /*** FUNCTION DEFINITIONS: ***/
 
 /**
-@fn GCD
-@brief Determines the greatest common denominator between two integers.
-@param top One of the two integers whose GCD will be found.
-@param bottom One of the two integers whose GCD will be found.
+@fn R_new
+@brief Allocates a new Rational equal to 1/1.
+@return A pointer to a dynamically allocated Rational struct with top = 1 and
+bottom = 1.
+*/
+Rational *R_new ()
+{
+	Rational *r = (Rational *)malloc(sizeof(Rational));
+	r->top = 1;
+	r->bottom = 1;
+	return r;
+}
+
+/**
+@fn R_copy
+@brief Creates a dynamically allocated copy of another Rational.
+@param r The Rational to be copied.
+@return A pointer to a dynamically allocated copy of r.
+*/
+Rational *R_copy (Rational r)
+{
+	Rational *c = (Rational *)malloc(sizeof(Rational));
+	c->top = r.top;
+	c->bottom = r.bottom;
+	return c;
+}
+
+/**
+@fn R_GCD
+@brief Determines the greatest common denominator between two non-negative integers.
+@param top One of the two integers whose GCD will be found. Must be non-negative.
+@param bottom One of the two integers whose GCD will be found. Must be
+non-negative.
 @return The GCD of top and bottom.
 */
-int32_t GCD (int32_t top, int32_t bottom)
+int32_t R_GCD (int32_t top, int32_t bottom)
 {
-	/* @TODO: implement */
+	/* Ensure that top and bottom are non-negative. */
+	if ( top < 0 || bottom < 0 )
+	{
+		/* @TODO: implement error codes */
+		return -1;
+	}
+	/* If either top or bottom is zero, then the GCD must be the non-zero input. */
+	if ( top == 0 && bottom != 0 )
+	{
+		return bottom;
+	}
+	else if ( bottom == 0 && top != 0 )
+	{
+		return top;
+	}
+	else if ( top == 0 && bottom == 0 )
+	{
+		/* @TODO: implement error codes */
+		return -2;
+	}
+	/* Determine which of the two inputs is larger. */
+	int32_t larger, smaller;
+	if ( top > bottom )
+	{
+		larger = top;
+		smaller = bottom;
+	}
+	else 
+	{
+		larger = bottom;
+		smaller = top;
+	}
+	int32_t swap;
+	/* Use Euclidean algorithm to find the GCD. */
+	while ( larger > 0 && smaller > 0 )
+	{
+		larger %= smaller;
+		swap = larger;
+		larger = smaller;
+		smaller = swap;
+	}
+	return larger;
 }
 
 /**
@@ -36,7 +106,36 @@ positive.
 */
 void R_reduce (Rational *r)
 {
-	/* @TODO: implement */
+	/* If the bottom is negative, make the top negative instead. */
+	if ( r->bottom < 0 )
+	{
+		r->bottom *= -1;
+		r->top *= -1;
+	}
+	/* Find the GCD between the top and bottom. */
+	int32_t gcd = R_GCD(r->top, r->bottom);
+	/* Divide the top and bottom by the GCD, thus reducing the fraction. */
+	if ( gcd > 1 )
+	{
+		r->top /= gcd;
+		r->bottom /= gcd;
+	}
+}
+
+/**
+@fn R_invert
+@brief Inverts a rational's fraction form. So for instance, 2/7 will be inverted
+to 7/2. 0/x will be converted x/0 without throwing any sort of error notification.
+@param r Pointer to the Rational to be inverted.
+*/
+void R_invert (Rational *r)
+{
+	/* Swap the top and bottom. */
+	int32_t swap = r->bottom;
+	r->bottom = r->top;
+	r->top = swap;
+	/* Reduce r. */
+	R_reduce(r);
 }
 
 /**
@@ -47,7 +146,12 @@ void R_reduce (Rational *r)
 */
 void R_add (Rational *r, int32_t i)
 {
-	/* @TODO: implement */
+	/* Scale i up to match the bottom of r. */
+	i *= r->bottom;
+	/* Add i to the top of r. */
+	r->top += i;
+	/* Reduce r. */
+	R_reduce(r);
 }
 
 /**
@@ -58,7 +162,19 @@ void R_add (Rational *r, int32_t i)
 */
 void R_addR (Rational *r, Rational a)
 {
-	/* @TODO: implement */
+	/* Reduce both rationals to help avoid overflow during addition.. */
+	R_reduce(r);
+	R_reduce(&a);
+	/* Cross-multiply the two rationals to prepare them for addition. */
+	Rational b;
+	b.top = a.top * r->bottom;
+	r->top *= a.bottom;
+	r->bottom *= a.top;
+	/* Add the two tops together. */
+	/* Add the two tops together. */
+	r->top += b.top;
+	/* Finally, reduce r again. */
+	R_reduce(r);
 }
 
 /**
@@ -69,7 +185,8 @@ void R_addR (Rational *r, Rational a)
 */
 void R_subtract (Rational *r, int32_t i)
 {
-	/* @TODO: implement */
+	/* Subtract i from r by adding negative i to r. */
+	R_add(r, i * -1);
 }
 
 /**
@@ -80,7 +197,9 @@ void R_subtract (Rational *r, int32_t i)
 */
 void R_subtractR (Rational *r, Rational s)
 {
-	/* @TODO: implement */
+	/* Subtract s from r by adding negative s to r. */
+	s.top *= -1;
+	R_addr(r, s);
 }
 
 /**
@@ -91,7 +210,12 @@ void R_subtractR (Rational *r, Rational s)
 */
 void R_mult (Rational *r, int32_t i)
 {
-	/* @TODO: implement */
+	/* Reduce r to help avoid overflow while multiplying. */
+	R_reduce(r);
+	/* Multiply the top of r by i. */
+	r->top *= i;
+	/* Reduce r. */
+	R_reduce(r);
 }
 
 /**
@@ -102,7 +226,14 @@ void R_mult (Rational *r, int32_t i)
 */
 void R_multR (Rational *r, Rational m)
 {
-	/* @TODO: implement */
+	/* Reduce both rationals to help avoid overflow. */
+	R_reduce(r);
+	R_reduce(&m);
+	/* Multiply the tops together and the bottoms together. */
+	r->top *= m.top;
+	r->bottom *= m.bottom;
+	/* Reduce r again. */
+	R_reduce(r);
 }
 
 /**
@@ -113,7 +244,12 @@ void R_multR (Rational *r, Rational m)
 */
 void R_div (Rational *r, int32_t i)
 {
-	/* @TODO: implement */
+	/* Reduce r to help avoid overflow. */
+	R_reduce(r);
+	/* Multiply the bottom of r by i. */
+	r->bottom *= i;
+	/* Reduce r again. */
+	R_reduce(r);
 }
 
 /**
@@ -125,5 +261,9 @@ This Rational will be the numerator.
 */
 void R_divR (Rational *r, Rational d)
 {
-	/* @TODO: implement */
+	/* Divide r by d by multiplying by the inverse of d. */
+	Rational *inverted = R_invert(R_copy(d));
+	R_multR(r, inverted);
+	/* Free the inverted copy of d. */
+	free(inverted);
 }

@@ -26,13 +26,29 @@ typedef struct
 } Rational;
 
 /**
+@fn R_new
+@brief Allocates a new Rational equal to 1/1.
+@return A pointer to a dynamically allocated Rational struct with top = 1 and
+bottom = 1.
+*/
+Rational *R_new ();
+
+/**
+@fn R_copy
+@brief Creates a dynamically allocated copy of another Rational.
+@param r The Rational to be copied.
+@return A pointer to a dynamically allocated copy of r.
+*/
+Rational *R_copy (Rational r);
+
+/**
 @fn GCD
 @brief Determines the greatest common denominator between two integers.
 @param top One of the two integers whose GCD will be found.
 @param bottom One of the two integers whose GCD will be found.
 @return The GCD of top and bottom.
 */
-int32_t GCD (int32_t top, int32_t bottom);
+int32_t R_GCD (int32_t top, int32_t bottom);
 
 /**
 @fn R_reduce
@@ -43,6 +59,14 @@ positive.
 @param r Pointer to the Rational to be reduced.
 */
 void R_reduce (Rational *r);
+
+/**
+@fn R_invert
+@brief Inverts a rational's fraction form. So for instance, 2/7 will be inverted
+to 7/2. 0/x will be converted x/0 without throwing any sort of error notification.
+@param r Pointer to the Rational to be inverted.
+*/
+void R_invert (Rational *r);
 
 /**
 @fn R_add
