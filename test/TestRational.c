@@ -5,6 +5,8 @@
 */
 
 /*** INCLUDES: ***/
+#include <limits.h>
+
 #include "unity.h"
 #include "Random.h"
 #include "Rational.h"
@@ -31,10 +33,53 @@ void test_R_new ()
 }
 
 /**
-@fn void test_R_copy
+@fn test_R_copy
 @brief Tests the functionality of R_copy().
-@details Verifies that R_copy will correctly copy a variety of Rationals.
+@details Verifies that R_copy() will accurately copy a Rational. Checks edge
+cases and then several random cases.
 */
+void test_R_copy ()
+{
+	/* Create a new Rational, copy it, then make sure its top and bottom are 1. */
+	Rational *first = R_new();
+	Rational *second = R_copy(*first);
+	TEST_ASSERT_EQUAL_INT32(1, second->top);
+	TEST_ASSERT_EQUAL_INT32(1, second->bottom);
+	/* Copy 0/0. */
+	free(second);
+	first->top = 0;
+	first->bottom = 0;
+	second = R_copy(first);
+	TEST_ASSERT_EQUAL_INT32(0, second->top);
+	TEST_ASSERT_EQUAL_INT32(0, second->bottom);
+	/* Copy INT_MIN/INT_MIN and INT_MAX/INT_MAX. */
+	free(second);
+	first->top = INT_MIN;
+	first->bottom = INT_MIN;
+	second = R_copy(first);
+	TEST_ASSERT_EQUAL_INT32(INT_MIN, second->top);
+	TEST_ASSERT_EQUAL_INT32(INT_MIN, second->bottom);
+	free(second);
+	first->top = INT_MAX;
+	first->bottom = INT_MAX;
+	second = R_copy(first);
+	TEST_ASSERT_EQUAL_INT32(INT_MAX, second->top);
+	TEST_ASSERT_EQUAL_INT32(INT_MAX, second->bottom);
+	/* Test ten different random Rationals. */
+	int32_t top;
+	int32_t bottom;
+	for (int i = 0; i < 10; i++)
+	{
+		top = Random_in_range(INT_MIN, INT_MAX);
+		bottom = Random_in_range(INT_MIN, INT_MAX);
+		first->top = top;
+		first->bottom = bottom;
+		second = R_copy(first);
+		TEST_ASSERT_EQUAL_INT32(top, second->top);
+		TEST_ASSERT_EQUAL_INT32(bottom, second->bottom);
+		free(second);
+	}
+}
 
 int main ()
 {
