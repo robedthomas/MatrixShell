@@ -66,8 +66,7 @@ void test_R_copy ()
 	TEST_ASSERT_EQUAL_INT32(INT_MAX, second->top);
 	TEST_ASSERT_EQUAL_INT32(INT_MAX, second->bottom);
 	/* Test ten different random Rationals. */
-	int32_t top;
-	int32_t bottom;
+	int32_t top, bottom;
 	for (int i = 0; i < 10; i++)
 	{
 		top = Random_in_range(INT_MIN, INT_MAX);
@@ -78,6 +77,62 @@ void test_R_copy ()
 		TEST_ASSERT_EQUAL_INT32(top, second->top);
 		TEST_ASSERT_EQUAL_INT32(bottom, second->bottom);
 		free(second);
+	}
+}
+
+/**
+@fn test_R_GCD
+@brief Tests the functionality of R_GCD().
+@details Performs various tests to ensure R_GCD() returns the proper greatest
+common denominator between two non-negative integers.
+*/
+void test_R_GCD ()
+{
+	int32_t top, bottom, gcd;
+	/* Try a random negative value for either input. R_GCD() should fail. */
+	top = Random_in_range(INT_MIN, -1);
+	bottom = Random_in_range(INT_MIN, -1);
+	gcd = R_GCD(top, bottom);
+	TEST_ASSERT_EQUAL_INT32(-1, gcd);
+	/* Try 0 for both inputs. R_GCD() should fail and return -2. */
+	gcd = R_GCD(0, 0);
+	TEST_ASSERT_EQUAL_INT32(-2, gcd);
+	/* Try 0 for one, then for the other. Should return the non-zero input. */
+	top = Random_in_range(1, INT_MAX);
+	gcd = R_GCD(top, 0);
+	TEST_ASSERT_EQUAL_INT32(top, gcd);
+	bottom = Random_in_range(1, INT_MAX);
+	gcd = R_GCD(0, bottom);
+	TEST_ASSERT_EQUAL_INT32(bottom, gcd);
+	/* Try 1 for one input, then for the other. Should return 1. */
+	top = Random_in_range(2, INT_MAX);
+	gcd = R_GCD(top, 1);
+	TEST_ASSERT_EQUAL_INT32(1, gcd);
+	bottom = Random_in_range(2, INT_MAX);
+	gcd = R_GCD(1, bottom);
+	TEST_ASSERT_EQUAL_INT32(1, gcd);
+	/* Try any two random numbers, then flip them. Results should be the same. */
+	top = Random_in_range(1, INT_MAX);
+	bottom = Random_in_range(1, INT_MAX);
+	gcd = R_GCD(top, bottom);
+	int32_t secondGcd = R_GCD(bottom, top);
+	TEST_ASSERT_EQUAL_INT32(gcd, secondGcd);
+	/* Try any two integers greater x, y > 1. The result r should divide them
+	   evenly (x % r = 0, y % r = 0). */
+	top = Random_in_range(2, 512);
+	bottom = Random_in_range(2, 512);
+	gcd = R_GCD(top, bottom);
+	TEST_ASSERT_EQUAL_INT32(0, top % gcd);
+	TEST_ASSERT_EQUAL_INT32(0, bottom % gcd);
+	/* With respect to the previous test, increment r until it reaches x or y.
+	   r should never evenly divide x and y during incrementing. This proves 
+	   that the original r was in fact the GREATEST common denominator. */
+	gcd++;
+	while ( gcd < top && gcd < bottom )
+	{
+		TEST_ASSERT(top % gcd != 0);
+		TEST_ASSERT(bottom % gcd != 0);
+		gcd++;
 	}
 }
 

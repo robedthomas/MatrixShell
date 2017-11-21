@@ -48,9 +48,9 @@ Rational *R_copy (Rational r)
 @param top One of the two integers whose GCD will be found. Must be non-negative.
 @param bottom One of the two integers whose GCD will be found. Must be
 non-negative.
-@return The GCD of top and bottom.
+@return The GCD of top and bottom. -1 if either top and/or bottom was negative.
 */
-int32_t R_GCD (int32_t top, int32_t bottom)
+int64_t R_GCD (int64_t top, int64_t bottom)
 {
 	/* Ensure that top and bottom are non-negative. */
 	if ( top < 0 || bottom < 0 )
@@ -73,7 +73,7 @@ int32_t R_GCD (int32_t top, int32_t bottom)
 		return -2;
 	}
 	/* Determine which of the two inputs is larger. */
-	int32_t larger, smaller;
+	int64_t larger, smaller;
 	if ( top > bottom )
 	{
 		larger = top;
@@ -84,7 +84,7 @@ int32_t R_GCD (int32_t top, int32_t bottom)
 		larger = bottom;
 		smaller = top;
 	}
-	int32_t swap;
+	int64_t swap;
 	/* Use Euclidean algorithm to find the GCD. */
 	while ( larger > 0 && smaller > 0 )
 	{
@@ -120,6 +120,39 @@ void R_reduce (Rational *r)
 		r->top /= gcd;
 		r->bottom /= gcd;
 	}
+}
+
+/**
+@fn R_reduce64
+@brief Similar to R_reduce, reduces the top and bottom of a rational such that
+afterwards their greatest common denominator is 1. However, this version takes 
+in a top and bottom with double precision (64-bit ints instead of 32-bit ints).
+This is necessary because certain operations (such as multiplication) can
+result in temporary overflow before reduction is completed.
+@param dest Pointer to the Rational where the resulting top and bottom will be
+stored.
+@param top 64-bit integer representing the top of the Rational being reduced.
+@param bottom 64-bit integer representing the bottom of the Rational being reduced.
+*/
+void R_reduce64 (Rational *dest, int64_t top, int64_t bottom)
+{
+	/* If the bottom is negative, make the top negative instead. */
+	if ( bottom < 0 )
+	{
+		bottom *= -1;
+		top *= -1;
+	}
+	/* Find the GCD between the top and bottom. */
+	int64_t gcd = R_GCD(top, bottom);
+	/* Divide the top and bottom by the GCD, thus reducing the fraction. */
+	if ( gcd > 1 )
+	{
+		top /= gcd;
+		bottom /= gcd;
+	}
+	/* Set dest's top and bottom to the top and bottom just formulated. */
+	dest->top = top;
+	dest->bottom = bottom;
 }
 
 /**
@@ -162,19 +195,17 @@ void R_add (Rational *r, int32_t i)
 */
 void R_addR (Rational *r, Rational a)
 {
-	/* Reduce both rationals to help avoid overflow during addition.. */
-	R_reduce(r);
-	R_reduce(&a);
 	/* Cross-multiply the two rationals to prepare them for addition. */
-	Rational b;
-	b.top = a.top * r->bottom;
-	r->top *= a.bottom;
-	r->bottom *= a.top;
+	/* While cross-multiplying, cast the products as 64-bit ints to avoid
+	   potential overflow. */
+	int64_t tempTop, tempBottom, addToTop;
+	tempTop = (int64_t)(r->top) * (int64_t)(a.bottom);
+	tempBottom = (int64_t)(r->bottom) * (int64_t)(a.bottom);
+	addToTop = (int64_t)(a.top) * (int64_t)(r->bottom);
 	/* Add the two tops together. */
-	/* Add the two tops together. */
-	r->top += b.top;
-	/* Finally, reduce r again. */
-	R_reduce(r);
+	tempTop += addToTop;
+	/* Finally, reduce r. */
+	R_reduce64(r, tempTop, tempBottom);
 }
 
 /**
@@ -199,62 +230,64 @@ void R_subtractR (Rational *r, Rational s)
 {
 	/* Subtract s from r by adding negative s to r. */
 	s.top *= -1;
-	R_addr(r, s);
+	R_addR(r, s);
 }
 
 /**
 @fn R_mult
-@brief Multiplies a rational by an integer.
+@brief Multiplies a rational by an integer. 
+@details Note that this function is vulnerable to overflow if the Rational and 
+integer being multiplied have extreme magnitudes.
 @param r Pointer to the Rational which will be multiplied.
 @param i The integer to multiply r by.
 */
 void R_mult (Rational *r, int32_t i)
 {
-	/* Reduce r to help avoid overflow while multiplying. */
-	R_reduce(r);
 	/* Multiply the top of r by i. */
-	r->top *= i;
+	int64_t tempTop = (int64_t)(r->top) * (int64_t)(i);
 	/* Reduce r. */
-	R_reduce(r);
+	R_reduce64(r, tempTop, r->bottom);
 }
 
 /**
 @fn R_multR
-@brief Multiplies a Rational by another Rational.
+@brief Multiplies a Rational by another Rational. 
+@details Note that this function is vulnerable to overflow if the Rationals 
+being multiplied have extreme magnitudes.
 @param r Pointer to the Rational which will be altered by the multiplication.
 @param m The Rational to multiply r by.
 */
 void R_multR (Rational *r, Rational m)
 {
-	/* Reduce both rationals to help avoid overflow. */
-	R_reduce(r);
-	R_reduce(&m);
 	/* Multiply the tops together and the bottoms together. */
-	r->top *= m.top;
-	r->bottom *= m.bottom;
-	/* Reduce r again. */
-	R_reduce(r);
+	int64_t tempTop, tempBottom;
+	tempTop = (int64_t)(r->top) * (int64_t)(m.top);
+	tempBottom = (int64_t)(r->bottom) * (int64_t)(m.bottom);
+	/* Reduce r. */
+	R_reduce64(r, tempTop, tempBottom);
 }
 
 /**
 @fn R_div
-@brief Divides a rational by an integer.
+@brief Divides a rational by an integer. 
+@details Note that this function is vulnerable to overflow if the Rational and 
+integer being divided have extreme magnitudes.
 @param r Pointer to the Rational which will be divided.
 @param i The integer to divide r by.
 */
 void R_div (Rational *r, int32_t i)
 {
-	/* Reduce r to help avoid overflow. */
-	R_reduce(r);
 	/* Multiply the bottom of r by i. */
-	r->bottom *= i;
-	/* Reduce r again. */
-	R_reduce(r);
+	int64_t tempBottom = (int64_t)(r->bottom) * (int64_t)(i);
+	/* Reduce r. */
+	R_reduce64(r, r->top, tempBottom);
 }
 
 /**
 @fn R_divR
-@brief Divides a Rational by another Rational.
+@brief Divides a Rational by another Rational. 
+@details Note that this function is vulnerable to overflow if the Rationals 
+being divided have extreme magnitudes.
 @param r Pointer to the Rational which will be altered by the division.
 This Rational will be the numerator.
 @param a The Rational to divide r by.

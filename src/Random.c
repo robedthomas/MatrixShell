@@ -21,25 +21,24 @@
 https://stackoverflow.com/questions/2509679/how-to-generate-a-random-number-from-within-a-range.
 This function may cause hitching as it randomly picks values until a valid one
 is found.
-@param max The maximum value for the random value to take. Must be non-negative.
+@param max The maximum value for the random value to take.
 @param errorCode Pointer to an int which this function will write error codes to.
-@return A 32-bit integer randomly picked with even distribution from the range
-[0, max].
+@return An unsigned 32-bit integer randomly picked with even distribution from 
+the range [0, max].
 */
-int32_t Random_at_most (int32_t max, int *errorCode)
+int32_t Random_at_most (uint32_t max, int *errorCode)
 {
-	/* Verify max is non-negative. */
-	if ( max < 0 )
+	/* If max == UINT_MAX, then simply return the result of random(). */
+	if (max == UINT_MAX)
 	{
-		*errorCode = NEGATIVE_MAX;
-		return -1;
+		return random();
 	}
 	/* The size of the set of integers between 0 and RAND_MAX. This set is the
 	   set that random() will choose from. */
 	uint32_t setSize = (uint32_t)(RAND_MAX + 1);
 	/* Divide the set of all integers between 0 and RAND_MAX into equally-sized
 	   bins. */
-	uint32_t numBins = (uint32_t)(max + 1);
+	uint32_t numBins = max + 1;
 	/* Determine the size of each of these bins. */
 	uint32_t binSize = setSize / numBins;
 	/* Not all of the set will be covered by these bins. Only numBins * binSize
@@ -81,7 +80,6 @@ int32_t Random_in_range (int32_t min, int32_t max, int *errorCode)
 	   the same size starting at 0, then rebase that range to match the desired
 	   range. */
 	int32_t rangeSize = max - min;
-	int32_t choice;
-	choice = Random_at_most(rangeSize);
+	int32_t choice = Random_at_most(rangeSize);
 	return choice + min;
 }

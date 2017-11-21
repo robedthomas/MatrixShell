@@ -19,10 +19,10 @@ This function may cause hitching as it randomly picks values until a valid one
 is found.
 @param max The maximum value for the random value to take. Must be non-negative.
 @param errorCode Pointer to an int which this function will write error codes to.
-@return A 32-bit integer randomly picked with even distribution from the range
-[0, max].
+@return An unsigned 32-bit integer randomly picked with even distribution from 
+the range [0, max].
 */
-int32_t Random_at_most (int32_t max, int *errorCode);
+int32_t Random_at_most (uint32_t max, int *errorCode);
 
 /**
 @fn Random_in_range
